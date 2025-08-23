@@ -66,7 +66,6 @@ const SetupCategoriesScreen = () => {
             type: 'expense',
             color: categoryData.color,
             lucideIconName: categoryData.icon,
-            icon: '',
           });
         }
       }
@@ -80,7 +79,6 @@ const SetupCategoriesScreen = () => {
             type: 'income',
             color: categoryData.color,
             lucideIconName: categoryData.icon,
-            icon: '',
           });
         }
       }

@@ -32,7 +32,7 @@ const CurrencyScreen = () => {
       const currency = currencies.find(c => c.code === selectedCurrency);
       if (currency) {
         await setItem(StorageKeys.USER_CURRENCY, currency);
-        router.push('/onboarding/budget');
+        router.push('/onboarding/setup-account');
       }
     } catch (error) {
       console.error('Error saving currency:', error);

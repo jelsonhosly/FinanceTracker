@@ -5,6 +5,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { useState } from 'react';
 import { Shield, Lock, Eye, Smartphone, Database, ChevronRight, AlertTriangle, CheckCircle } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { SecurityFeatures } from '@/components/SecurityFeatures';
 
 const SecuritySetupScreen = () => {
   const { theme } = useTheme();
@@ -16,33 +17,6 @@ const SecuritySetupScreen = () => {
   const handleContinue = () => {
     router.push('/onboarding/tutorial-navigation');
   };
-
-  const securityFeatures = [
-    {
-      icon: Database,
-      title: 'Local Storage Only',
-      description: 'All your data stays on your device. No cloud sync means complete privacy.',
-      status: 'enabled',
-    },
-    {
-      icon: Lock,
-      title: 'No Account Required',
-      description: 'No sign-up, no passwords, no personal information shared.',
-      status: 'enabled',
-    },
-    {
-      icon: Shield,
-      title: 'Encrypted Backups',
-      description: 'When you export data, it\'s stored in a secure format.',
-      status: 'enabled',
-    },
-    {
-      icon: Eye,
-      title: 'Open Source',
-      description: 'Transparent code means you can verify our security claims.',
-      status: 'enabled',
-    },
-  ];
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -64,31 +38,7 @@ const SecuritySetupScreen = () => {
         </View>
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          {/* Security Features */}
-          <View style={styles.securitySection}>
-            <Text style={styles.sectionTitle}>Built-in Security Features</Text>
-            <View style={styles.featuresList}>
-              {securityFeatures.map((feature, index) => {
-                const IconComponent = feature.icon;
-                
-                return (
-                  <View key={index} style={styles.featureCard}>
-                    <View style={styles.featureHeader}>
-                      <View style={[styles.featureIcon, { backgroundColor: 'rgba(255, 255, 255, 0.15)' }]}>
-                        <IconComponent size={20} color="white" />
-                      </View>
-                      <View style={styles.featureStatus}>
-                        <CheckCircle size={16} color="#30D158" />
-                        <Text style={styles.featureStatusText}>Active</Text>
-                      </View>
-                    </View>
-                    <Text style={styles.featureTitle}>{feature.title}</Text>
-                    <Text style={styles.featureDescription}>{feature.description}</Text>
-                  </View>
-                );
-              })}
-            </View>
-          </View>
+          <SecurityFeatures />
 
           {/* Privacy Settings */}
           <View style={styles.settingsSection}>
@@ -214,58 +164,14 @@ const styles = StyleSheet.create({
   securitySection: {
     marginBottom: 32,
   },
+  settingsSection: {
+    marginBottom: 32,
+  },
   sectionTitle: {
     fontSize: 20,
     fontWeight: '700',
     color: 'white',
     marginBottom: 16,
-  },
-  featuresList: {
-    gap: 16,
-  },
-  featureCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  featureHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  featureIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  featureStatus: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  featureStatusText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#30D158',
-  },
-  featureTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: 'white',
-    marginBottom: 8,
-  },
-  featureDescription: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.8)',
-    lineHeight: 20,
-  },
-  settingsSection: {
-    marginBottom: 32,
   },
   settingItem: {
     flexDirection: 'row',

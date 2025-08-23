@@ -6,6 +6,7 @@ import { useData } from '@/context/DataContext';
 import { useState, useRef, useEffect } from 'react';
 import { ArrowDown, ArrowUp, Repeat, ChevronRight, CirclePlus as PlusCircle, Lightbulb, Target } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { setItem, StorageKeys } from '@/utils/storage';
 
 const TutorialTransactionScreen = () => {
   const { theme } = useTheme();
@@ -83,7 +84,11 @@ const TutorialTransactionScreen = () => {
         });
       }
       
-      animateToNextStep();
+      if (currentStep < steps.length - 1) {
+        animateToNextStep();
+      } else {
+        router.push('/onboarding/security-setup');
+      }
     } catch (error) {
       console.error('Error creating sample transaction:', error);
     } finally {
@@ -91,10 +96,16 @@ const TutorialTransactionScreen = () => {
     }
   };
 
-  const handleFinishTutorial = () => {
-    router.replace('/(tabs)');
+  const handleFinishTutorial = async () => {
+    try {
+      await setItem(StorageKeys.ONBOARDING_COMPLETE, true);
+      router.replace('/(tabs)');
+    } catch (error) {
+      console.error('Error completing onboarding:', error);
+    }
   };
 
+  const steps = [
   const steps = [
     {
       title: 'Let\'s Add Your First Transaction',
@@ -153,6 +164,51 @@ const TutorialTransactionScreen = () => {
       ),
     },
     {
+      title: 'Perfect! You\'re Ready to Go',
+      subtitle: 'You now have everything set up to start tracking your finances effectively.',
+      content: (
+        <View style={styles.stepContent}>
+          <View style={styles.completionStats}>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>1</Text>
+              <Text style={styles.statLabel}>Account Created</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>{categories.length}</Text>
+              <Text style={styles.statLabel}>Categories Ready</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>2</Text>
+              <Text style={styles.statLabel}>Sample Transactions</Text>
+            </View>
+          </View>
+
+          <View style={styles.tipsSection}>
+            <View style={styles.tip}>
+              <CirclePlus size={20} color="rgba(255, 255, 255, 0.8)" />
+              <Text style={styles.tipText}>
+                Use the floating + button to quickly add new transactions
+              </Text>
+            </View>
+            <View style={styles.tip}>
+              <Target size={20} color="rgba(255, 255, 255, 0.8)" />
+              <Text style={styles.tipText}>
+                Check the Reports tab for insights into your spending patterns
+              </Text>
+            </View>
+          </View>
+          
+          <TouchableOpacity
+            style={styles.finishButton}
+            onPress={handleFinishTutorial}
+          >
+            <Text style={styles.finishButtonText}>Start Using FinanceTracker</Text>
+            <ChevronRight size={20} color="white" />
+          </TouchableOpacity>
+        </View>
+      ),
+    },
+    {
       title: 'Perfect! You\'re All Set',
       subtitle: 'You now have everything you need to start tracking your finances effectively.',
       content: (
@@ -196,7 +252,7 @@ const TutorialTransactionScreen = () => {
           </TouchableOpacity>
         </View>
       ),
-    },
+    }
   ];
 
   const currentStepData = steps[currentStep];

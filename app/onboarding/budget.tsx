@@ -4,6 +4,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useTheme } from '@/context/ThemeContext';
 import { setItem, StorageKeys, getItem } from '@/utils/storage';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Target, ChevronRight } from 'lucide-react-native';
 
 const BudgetScreen = () => {
   const { theme } = useTheme();
@@ -23,16 +25,13 @@ const BudgetScreen = () => {
   }, []);
 
   const handleComplete = async () => {
-    if (!monthlyBudget) return;
-    
     setIsSubmitting(true);
     try {
-      const budget = parseFloat(monthlyBudget);
-      if (!isNaN(budget)) {
+      const budget = parseFloat(monthlyBudget) || 0;
+      if (budget > 0) {
         await setItem(StorageKeys.USER_BUDGET, budget);
-        await setItem(StorageKeys.ONBOARDING_COMPLETE, true);
-        router.replace('/(tabs)');
       }
+      router.push('/onboarding/security-setup');
     } catch (error) {
       console.error('Error saving budget:', error);
     } finally {
@@ -40,211 +39,273 @@ const BudgetScreen = () => {
     }
   };
 
+  const handleSkip = () => {
+    router.push('/onboarding/security-setup');
+  };
+
   return (
-    <KeyboardAvoidingView 
-      style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        <View style={styles.content}>
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <LinearGradient
+        colors={[theme.colors.primary, theme.colors.secondary]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.gradientBackground}
+      />
+      <SafeAreaView style={styles.safeArea}>
+        <KeyboardAvoidingView 
+          style={styles.keyboardAvoid}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
           <View style={styles.header}>
-            <Text style={[styles.title, { color: theme.colors.text }]}>
-              Set Your Monthly Budget
-            </Text>
-            <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>
-              You can always change this later in settings
+            <View style={[styles.iconContainer, { backgroundColor: 'rgba(255, 255, 255, 0.2)' }]}>
+              <Target size={48} color="white" />
+            </View>
+            <Text style={styles.title}>Set Your Monthly Budget</Text>
+            <Text style={styles.subtitle}>
+              Optional: Set a monthly spending target to help track your financial goals
             </Text>
           </View>
 
-          <View style={styles.budgetInputContainer}>
-            <View style={[
-              styles.currencySymbolContainer,
-              { backgroundColor: theme.colors.card }
-            ]}>
-              <Text style={[styles.currencySymbol, { color: theme.colors.text }]}>
-                {currency.symbol}
+          <View style={styles.content}>
+            <View style={styles.budgetInputContainer}>
+              <View style={styles.currencySymbolContainer}>
+                <Text style={styles.currencySymbol}>
+                  {currency.symbol}
+                </Text>
+              </View>
+              <TextInput
+                style={styles.budgetInput}
+                placeholder="0.00"
+                placeholderTextColor="rgba(255, 255, 255, 0.6)"
+                value={monthlyBudget}
+                onChangeText={(text) => {
+                  // Allow only numbers and one decimal point
+                  const formatted = text.replace(/[^0-9.]/g, '');
+                  // Ensure only one decimal point
+                  const decimalCount = (formatted.match(/\./g) || []).length;
+                  if (decimalCount <= 1) {
+                    setMonthlyBudget(formatted);
+                  }
+                }}
+                keyboardType="decimal-pad"
+                returnKeyType="done"
+              />
+            </View>
+
+            <View style={styles.suggestions}>
+              <Text style={styles.suggestionTitle}>
+                Quick Suggestions
+              </Text>
+              <View style={styles.suggestionChips}>
+                {[1000, 2000, 3000, 5000].map((amount) => (
+                  <TouchableOpacity
+                    key={amount}
+                    style={styles.chip}
+                    onPress={() => setMonthlyBudget(amount.toString())}
+                  >
+                    <Text style={styles.chipText}>
+                      {currency.symbol}{amount.toLocaleString()}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            <View style={styles.infoCard}>
+              <Text style={styles.infoTitle}>Why Set a Budget?</Text>
+              <Text style={styles.infoText}>
+                • Get alerts when you're approaching your spending limit
+              </Text>
+              <Text style={styles.infoText}>
+                • Track your progress toward financial goals
+              </Text>
+              <Text style={styles.infoText}>
+                • Receive personalized spending insights
               </Text>
             </View>
-            <TextInput
+          </View>
+
+          <View style={styles.footer}>
+            <TouchableOpacity
               style={[
-                styles.budgetInput,
+                styles.button,
                 { 
-                  color: theme.colors.text,
-                  backgroundColor: theme.colors.card,
-                  borderColor: theme.colors.border 
-                }
+                  backgroundColor: monthlyBudget ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0.1)',
+                  borderColor: monthlyBudget ? 'rgba(255, 255, 255, 0.4)' : 'rgba(255, 255, 255, 0.2)',
+                  opacity: isSubmitting ? 0.7 : 1
+                },
               ]}
-              placeholder="0.00"
-              placeholderTextColor={theme.colors.textSecondary}
-              value={monthlyBudget}
-              onChangeText={(text) => {
-                // Allow only numbers and one decimal point
-                const formatted = text.replace(/[^0-9.]/g, '');
-                // Ensure only one decimal point
-                const decimalCount = (formatted.match(/\./g) || []).length;
-                if (decimalCount <= 1) {
-                  setMonthlyBudget(formatted);
-                }
-              }}
-              keyboardType="decimal-pad"
-              returnKeyType="done"
-            />
+              onPress={handleComplete}
+              disabled={isSubmitting}
+            >
+              <Text style={styles.buttonText}>
+                {isSubmitting ? 'Saving...' : monthlyBudget ? 'Set Budget' : 'Continue'}
+              </Text>
+              {!isSubmitting && <ChevronRight size={20} color="white" />}
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={styles.skipButton}
+              onPress={handleSkip}
+              disabled={isSubmitting}
+            >
+              <Text style={styles.skipText}>
+                Skip for now
+              </Text>
+            </TouchableOpacity>
           </View>
-
-          <View style={styles.suggestions}>
-            <Text style={[styles.suggestionTitle, { color: theme.colors.textSecondary }]}>
-              Quick Suggestions
-            </Text>
-            <View style={styles.suggestionChips}>
-              {[1000, 2000, 3000, 5000].map((amount) => (
-                <TouchableOpacity
-                  key={amount}
-                  style={[
-                    styles.chip,
-                    { 
-                      backgroundColor: theme.colors.card,
-                      borderColor: theme.colors.border 
-                    }
-                  ]}
-                  onPress={() => setMonthlyBudget(amount.toString())}
-                >
-                  <Text style={[styles.chipText, { color: theme.colors.primary }]}>
-                    {currency.symbol}{amount.toLocaleString()}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.footer}>
-          <TouchableOpacity
-            style={[
-              styles.button,
-              { 
-                backgroundColor: monthlyBudget ? theme.colors.primary : '#ccc',
-                opacity: isSubmitting ? 0.7 : 1
-              },
-            ]}
-            onPress={handleComplete}
-            disabled={!monthlyBudget || isSubmitting}
-          >
-            <Text style={styles.buttonText}>
-              {isSubmitting ? 'Completing Setup...' : 'Complete Setup'}
-            </Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity
-            style={styles.skipButton}
-            onPress={() => {
-              setItem(StorageKeys.ONBOARDING_COMPLETE, true);
-              router.replace('/(tabs)');
-            }}
-            disabled={isSubmitting}
-          >
-            <Text style={[styles.skipText, { color: theme.colors.textSecondary }]}>
-              Skip for now
-            </Text>
-          </TouchableOpacity>
-        </View>
+        </KeyboardAvoidingView>
       </SafeAreaView>
-    </KeyboardAvoidingView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
   },
-  content: {
+  gradientBackground: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+  },
+  safeArea: {
     flex: 1,
   },
+  keyboardAvoid: {
+    flex: 1,
+    padding: 20,
+  },
   header: {
+    alignItems: 'center',
     marginBottom: 40,
-    marginTop: 20,
+  },
+  iconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
   },
   title: {
     fontSize: 28,
-    fontWeight: 'bold',
+    fontWeight: '700',
+    color: 'white',
+    textAlign: 'center',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    opacity: 0.8,
+    color: 'rgba(255, 255, 255, 0.9)',
+    textAlign: 'center',
+    lineHeight: 24,
+    paddingHorizontal: 20,
+  },
+  content: {
+    flex: 1,
   },
   budgetInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 40,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   currencySymbolContainer: {
-    padding: 16,
-    borderTopLeftRadius: 12,
-    borderBottomLeftRadius: 12,
-    borderWidth: 1,
-    borderRightWidth: 0,
-    borderColor: '#ddd',
+    padding: 20,
+    borderTopLeftRadius: 16,
+    borderBottomLeftRadius: 16,
   },
   currencySymbol: {
-    fontSize: 20,
-    fontWeight: '600',
+    fontSize: 24,
+    fontWeight: '700',
+    color: 'white',
   },
   budgetInput: {
     flex: 1,
-    fontSize: 24,
-    padding: 16,
-    borderTopRightRadius: 12,
-    borderBottomRightRadius: 12,
-    borderWidth: 1,
-    borderLeftWidth: 0,
+    fontSize: 28,
+    padding: 20,
+    color: 'white',
+    fontWeight: '300',
   },
   suggestions: {
-    marginBottom: 20,
+    marginBottom: 32,
   },
   suggestionTitle: {
-    fontSize: 16,
-    marginBottom: 12,
+    fontSize: 18,
+    fontWeight: '600',
+    color: 'white',
+    marginBottom: 16,
   },
   suggestionChips: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginHorizontal: -6,
+    gap: 12,
   },
   chip: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
     borderRadius: 20,
-    margin: 6,
     borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   chipText: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: '600',
+    color: 'white',
+  },
+  infoCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    padding: 20,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  infoTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: 'white',
+    marginBottom: 12,
+  },
+  infoText: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.9)',
+    lineHeight: 20,
+    marginBottom: 8,
   },
   footer: {
     marginTop: 'auto',
     marginBottom: 20,
   },
   button: {
-    padding: 16,
-    borderRadius: 12,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 2,
     marginBottom: 12,
+    gap: 8,
   },
   buttonText: {
     color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '700',
   },
   skipButton: {
     padding: 12,
     alignItems: 'center',
   },
   skipText: {
-    fontSize: 15,
-    fontWeight: '500',
+    fontSize: 16,
+    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.8)',
   },
 });
 

@@ -38,7 +38,10 @@ export default function DebugScreen() {
   const clearStorage = async () => {
     try {
       await AsyncStorage.clear();
-      alert('Storage cleared! Please reload the app.');
+      setStorageContents({});
+      alert('Storage cleared! The app will restart.');
+      // Force app restart by navigating to onboarding
+      router.replace('/onboarding');
     } catch (e) {
       console.error('DebugScreen - Error clearing storage:', e);
       alert('Error clearing storage');

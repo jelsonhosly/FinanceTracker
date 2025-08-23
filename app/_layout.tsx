@@ -21,7 +21,14 @@ function AppContent() {
       try {
         console.log('App starting - loading fonts...');
         await loadFonts();
-        console.log('Skipping onboarding - loading main app directly...');
+        console.log('Checking onboarding status...');
+        const onboardingComplete = await isOnboardingComplete();
+        console.log('Onboarding complete:', onboardingComplete);
+        
+        if (!onboardingComplete) {
+          console.log('Redirecting to onboarding...');
+          router.replace('/onboarding');
+        }
       } catch (e) {
         console.error('Error in prepare:', e);
       } finally {

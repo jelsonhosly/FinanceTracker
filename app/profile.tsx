@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
+import { getItem, StorageKeys } from '@/utils/storage';
 import {
   User,
   Bell,
@@ -17,40 +18,6 @@ import {
   DollarSign,
 } from 'lucide-react-native';
 
-interface Transaction {
-  id: string;
-  amount: number;
-  category: string;
-  date: string;
-  description: string;
-  type: 'expense' | 'income';
-}
-
-const generateDummyTransactions = (): Transaction[] => {
-  const categories = ['Food', 'Shopping', 'Transport', 'Bills', 'Entertainment', 'Salary', 'Freelance'];
-  const currentYear = new Date().getFullYear();
-  const transactions: Transaction[] = [];
-  
-  // Generate 50 random transactions for the current year
-  for (let i = 0; i < 50; i++) {
-    const isExpense = Math.random() > 0.3;
-    const month = Math.floor(Math.random() * 12) + 1;
-    const day = Math.floor(Math.random() * 28) + 1;
-    const amount = Math.floor(Math.random() * 1000) + 1;
-    const category = categories[Math.floor(Math.random() * categories.length)];
-    
-    transactions.push({
-      id: `trans_${i + 1}`,
-      amount: isExpense ? -amount : amount,
-      category,
-      date: `${currentYear}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`,
-      description: `${isExpense ? 'Paid' : 'Received'} for ${category.toLowerCase()}`,
-      type: isExpense ? 'expense' : 'income',
-    });
-  }
-  
-  return transactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-};
 
 interface UserData {
   name: string;
@@ -65,24 +32,35 @@ interface UserData {
 export default function Profile() {
   const { theme } = useTheme();
   const router = useRouter();
-  const [transactions] = useState<Transaction[]>(() => generateDummyTransactions());
-  const [userData] = useState<UserData>({
-    name: 'John Doe',
-    email: 'john.doe@example.com',
+  const [userData, setUserData] = useState<UserData>({
+    name: 'User',
+    email: '',
     currency: { code: 'USD', symbol: '$' },
-    budget: 3000,
+    budget: 0,
   });
   
-  // Calculate totals for the current year
-  const currentYear = new Date().getFullYear();
-  const yearlyData = transactions.reduce((acc, transaction) => {
-    const year = new Date(transaction.date).getFullYear();
-    if (year === currentYear) {
-      acc.totalIncome += transaction.type === 'income' ? transaction.amount : 0;
-      acc.totalExpenses += transaction.type === 'expense' ? Math.abs(transaction.amount) : 0;
-    }
-    return acc;
-  }, { totalIncome: 0, totalExpenses: 0 });
+  useEffect(() => {
+    const loadUserData = async () => {
+      try {
+        const [name, email, currency, budget] = await Promise.all([
+          getItem(StorageKeys.USER_NAME),
+          getItem(StorageKeys.USER_EMAIL),
+          getItem(StorageKeys.USER_CURRENCY),
+          getItem(StorageKeys.USER_BUDGET),
+        ]);
+        
+        setUserData({
+          name: name || 'User',
+          email: email || '',
+          currency: currency || { code: 'USD', symbol: '$' },
+          budget: budget || 0,
+        });
+      } catch (error) {
+        console.error('Error loading user data:', error);
+      }
+    };
+    loadUserData();
+  }, []);
 
   const getUserInitials = (name: string) => {
     return name
@@ -111,7 +89,7 @@ export default function Profile() {
               <Text style={[styles.userEmail, { color: theme.colors.textSecondary }]}>
                 {userData?.email}
               </Text>
-              {userData?.budget !== undefined && (
+              {userData?.budget !== undefined && userData.budget > 0 && (
                 <View style={styles.budgetContainer}>
                   <Text style={[styles.budgetLabel, { color: theme.colors.textSecondary }]}>
                     Monthly Budget:

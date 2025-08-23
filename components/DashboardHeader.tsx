@@ -2,11 +2,27 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { Bell, User } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
+import { getItem, StorageKeys } from '@/utils/storage';
+import { useState, useEffect } from 'react';
 
 export function DashboardHeader() {
   const { theme } = useTheme();
   const router = useRouter();
+  const [userName, setUserName] = useState('User');
 
+  useEffect(() => {
+    const loadUserName = async () => {
+      try {
+        const savedName = await getItem(StorageKeys.USER_NAME);
+        if (savedName) {
+          setUserName(savedName);
+        }
+      } catch (error) {
+        console.error('Error loading user name:', error);
+      }
+    };
+    loadUserName();
+  }, []);
   return (
     <View style={styles.container}>
       <View>
@@ -14,7 +30,7 @@ export function DashboardHeader() {
           Hello,
         </Text>
         <Text style={[styles.userName, { color: theme.colors.text }]}>
-          John Doe
+          {userName}
         </Text>
       </View>
 

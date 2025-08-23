@@ -21,11 +21,6 @@ export default function Dashboard() {
   const router = useRouter();
   const recentTransactions = getRecentTransactions(5);
 
-  // Setup notifications when app loads
-  useEffect(() => {
-    setupNotifications();
-  }, []);
-
   // Calculate net balance from paid transactions only
   const netBalance = paidIncome - paidExpenses;
 
@@ -36,12 +31,46 @@ export default function Dashboard() {
   // Get main currency for display
   const mainCurrency = currencies.find(c => c.code === mainCurrencyCode);
 
-  // Calculate previous period data for Smart Insights
-  const previousPeriodData = {
-    income: 0, // This would be calculated based on previous period
-    expenses: 0,
-    net: 0,
-  };
+  // Show welcome message for new users
+  const showWelcomeMessage = transactions.length === 0 && accounts.length === 0;
+
+  if (showWelcomeMessage) {
+    return (
+      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+        <StatusBar style={theme.dark ? 'light' : 'dark'} />
+        <SafeAreaView edges={['top']} style={styles.safeArea}>
+          <DashboardHeader />
+          
+          <View style={styles.welcomeContainer}>
+            <View style={[styles.welcomeCard, { backgroundColor: theme.colors.card }]}>
+              <Text style={[styles.welcomeTitle, { color: theme.colors.text }]}>
+                Welcome to FinanceTracker! 🎉
+              </Text>
+              <Text style={[styles.welcomeMessage, { color: theme.colors.textSecondary }]}>
+                You're all set up and ready to start tracking your finances. Use the + button below to add your first real transaction, or explore the different tabs to familiarize yourself with the app.
+              </Text>
+              
+              <View style={styles.quickActions}>
+                <TouchableOpacity 
+                  style={[styles.quickActionButton, { backgroundColor: theme.colors.primary }]}
+                  onPress={() => router.push('/transaction/add')}
+                >
+                  <Text style={styles.quickActionText}>Add Transaction</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={[styles.quickActionButton, { backgroundColor: theme.colors.secondary }]}
+                  onPress={() => router.push('/account/add')}
+                >
+                  <Text style={styles.quickActionText}>Add Account</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </SafeAreaView>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -131,16 +160,22 @@ export default function Dashboard() {
           )}
 
           {/* Smart Insights */}
-          <SmartInsights 
-            transactions={transactions}
-            categories={categories}
-            accounts={accounts}
-            currencies={currencies}
-            mainCurrencyCode={mainCurrencyCode}
-            getExchangeRate={getExchangeRate}
-            dateLabel="This Month"
-            previousPeriodData={previousPeriodData}
-          />
+          {transactions.length > 0 && (
+            <SmartInsights 
+              transactions={transactions}
+              categories={categories}
+              accounts={accounts}
+              currencies={currencies}
+              mainCurrencyCode={mainCurrencyCode}
+              getExchangeRate={getExchangeRate}
+              dateLabel="This Month"
+              previousPeriodData={{
+                income: 0,
+                expenses: 0,
+                net: 0,
+              }}
+            />
+          )}
 
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Your Accounts</Text>
@@ -153,15 +188,29 @@ export default function Dashboard() {
             </TouchableOpacity>
           </View>
 
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.accountsContainer}
-          >
-            {accounts.slice(0, 3).map((account) => (
-              <AccountCard key={account.id} account={account} />
-            ))}
-          </ScrollView>
+          {accounts.length > 0 ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.accountsContainer}
+            >
+              {accounts.slice(0, 3).map((account) => (
+                <AccountCard key={account.id} account={account} />
+              ))}
+            </ScrollView>
+          ) : (
+            <View style={[styles.emptyAccountsCard, { backgroundColor: theme.colors.card }]}>
+              <Text style={[styles.emptyAccountsText, { color: theme.colors.textSecondary }]}>
+                No accounts yet. Add your first account to get started.
+              </Text>
+              <TouchableOpacity 
+                style={[styles.addAccountButton, { backgroundColor: theme.colors.primary }]}
+                onPress={() => router.push('/account/add')}
+              >
+                <Text style={styles.addAccountButtonText}>Add Account</Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Recent Transactions</Text>
@@ -180,15 +229,20 @@ export default function Dashboard() {
                 <TransactionListItem 
                   key={transaction.id} 
                   transaction={transaction} 
-                  currencies={currencies}
-                  mainCurrencyCode={mainCurrencyCode}
-                  getExchangeRate={getExchangeRate}
                 />
               ))
             ) : (
-              <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
-                No recent transactions
-              </Text>
+              <View style={[styles.emptyTransactionsCard, { backgroundColor: theme.colors.card }]}>
+                <Text style={[styles.emptyTransactionsText, { color: theme.colors.textSecondary }]}>
+                  No transactions yet. Start by adding your first transaction.
+                </Text>
+                <TouchableOpacity 
+                  style={[styles.addTransactionButton, { backgroundColor: theme.colors.primary }]}
+                  onPress={() => router.push('/transaction/add')}
+                >
+                  <Text style={styles.addTransactionButtonText}>Add Transaction</Text>
+                </TouchableOpacity>
+              </View>
             )}
           </View>
 
@@ -330,5 +384,93 @@ const styles = StyleSheet.create({
   },
   spacer: {
     height: 100,
+  },
+  welcomeContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+  },
+  welcomeCard: {
+    padding: 32,
+    borderRadius: 24,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 8,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 12,
+  },
+  welcomeTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  welcomeMessage: {
+    fontSize: 16,
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 32,
+  },
+  quickActions: {
+    flexDirection: 'row',
+    gap: 16,
+    width: '100%',
+  },
+  quickActionButton: {
+    flex: 1,
+    paddingVertical: 16,
+    borderRadius: 16,
+    alignItems: 'center',
+  },
+  quickActionText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  emptyAccountsCard: {
+    marginHorizontal: 16,
+    padding: 24,
+    borderRadius: 16,
+    alignItems: 'center',
+  },
+  emptyAccountsText: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  addAccountButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  addAccountButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  emptyTransactionsCard: {
+    marginHorizontal: 16,
+    padding: 24,
+    borderRadius: 16,
+    alignItems: 'center',
+  },
+  emptyTransactionsText: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  addTransactionButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  addTransactionButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
