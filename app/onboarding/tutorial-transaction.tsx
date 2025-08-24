@@ -106,7 +106,6 @@ const TutorialTransactionScreen = () => {
   };
 
   const steps = [
-  const steps = [
     {
       title: 'Let\'s Add Your First Transaction',
       subtitle: 'Transactions are the heart of expense tracking. Let\'s create a sample expense.',
