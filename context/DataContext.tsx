@@ -1,184 +1,318 @@
-import { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, SafeAreaView } from 'react-native';
-import { router } from 'expo-router';
-import { useTheme } from '@/context/ThemeContext';
-import { setItem, StorageKeys } from '@/utils/storage';
-import { LinearGradient } from 'expo-linear-gradient';
-import { DollarSign, Check, ChevronRight } from 'lucide-react-native';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { getItem, setItem, StorageKeys } from '@/utils/storage';
 
-interface CurrencyItem {
-  code: string;
+export interface Account {
+  id: string;
   name: string;
-  symbol: string;
+  type: 'checking' | 'savings' | 'credit' | 'cash' | 'investment';
+  balance: number;
+  currency: string;
+  color: string;
+  icon: string;
+  createdAt: string;
 }
 
-const currencies: CurrencyItem[] = [
-  { code: 'USD', name: 'US Dollar', symbol: '$' },
-  { code: 'EUR', name: 'Euro', symbol: '€' },
-  { code: 'GBP', name: 'British Pound', symbol: '£' },
-  { code: 'JPY', name: 'Japanese Yen', symbol: '¥' },
-  { code: 'AUD', name: 'Australian Dollar', symbol: 'A$' },
-  { code: 'CAD', name: 'Canadian Dollar', symbol: 'C$' },
-  { code: 'INR', name: 'Indian Rupee', symbol: '₹' },
-  { code: 'SGD', name: 'Singapore Dollar', symbol: 'S$' },
-];
+export interface Category {
+  id: string;
+  name: string;
+  type: 'income' | 'expense';
+  color: string;
+  icon: string;
+  subcategories?: string[];
+}
 
-const CurrencyScreen = () => {
-  const { theme } = useTheme();
-  const [selectedCurrency, setSelectedCurrency] = useState('USD');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+export interface Transaction {
+  id: string;
+  amount: number;
+  description: string;
+  categoryId: string;
+  accountId: string;
+  date: string;
+  type: 'income' | 'expense';
+  createdAt: string;
+}
 
-  const handleContinue = async () => {
-    setIsSubmitting(true);
+export interface Budget {
+  categoryId: string;
+  amount: number;
+  period: 'monthly' | 'weekly' | 'yearly';
+}
+
+export interface UserProfile {
+  name: string;
+  email: string;
+  currency: {
+    code: string;
+    name: string;
+    symbol: string;
+  };
+  onboardingCompleted: boolean;
+}
+
+interface DataContextType {
+  accounts: Account[];
+  categories: Category[];
+  transactions: Transaction[];
+  budgets: Budget[];
+  userProfile: UserProfile | null;
+  addAccount: (account: Omit<Account, 'id' | 'createdAt'>) => void;
+  updateAccount: (id: string, updates: Partial<Account>) => void;
+  deleteAccount: (id: string) => void;
+  addCategory: (category: Omit<Category, 'id'>) => void;
+  updateCategory: (id: string, updates: Partial<Category>) => void;
+  deleteCategory: (id: string) => void;
+  addTransaction: (transaction: Omit<Transaction, 'id' | 'createdAt'>) => void;
+  updateTransaction: (id: string, updates: Partial<Transaction>) => void;
+  deleteTransaction: (id: string) => void;
+  setBudget: (budget: Budget) => void;
+  deleteBudget: (categoryId: string) => void;
+  setUserProfile: (profile: UserProfile) => void;
+  clearAllData: () => void;
+}
+
+const DataContext = createContext<DataContextType | undefined>(undefined);
+
+export const useData = () => {
+  const context = useContext(DataContext);
+  if (context === undefined) {
+    throw new Error('useData must be used within a DataProvider');
+  }
+  return context;
+};
+
+interface DataProviderProps {
+  children: ReactNode;
+}
+
+export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [budgets, setBudgets] = useState<Budget[]>([]);
+  const [userProfile, setUserProfileState] = useState<UserProfile | null>(null);
+
+  // Load data from storage on mount
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
     try {
-      const currency = currencies.find(c => c.code === selectedCurrency);
-      if (currency) {
-        await setItem(StorageKeys.USER_CURRENCY, currency);
-        router.push('/onboarding/setup-account');
-      }
+      const [
+        storedAccounts,
+        storedCategories,
+        storedTransactions,
+        storedBudgets,
+        storedProfile
+      ] = await Promise.all([
+        getItem(StorageKeys.ACCOUNTS),
+        getItem(StorageKeys.CATEGORIES),
+        getItem(StorageKeys.TRANSACTIONS),
+        getItem(StorageKeys.BUDGETS),
+        getItem(StorageKeys.USER_PROFILE)
+      ]);
+
+      if (storedAccounts) setAccounts(storedAccounts);
+      if (storedCategories) setCategories(storedCategories);
+      if (storedTransactions) setTransactions(storedTransactions);
+      if (storedBudgets) setBudgets(storedBudgets);
+      if (storedProfile) setUserProfileState(storedProfile);
     } catch (error) {
-      console.error('Error saving currency:', error);
-    } finally {
-      setIsSubmitting(false);
+      console.error('Error loading data:', error);
     }
   };
 
-  const renderCurrencyItem = ({ item }: { item: CurrencyItem }) => (
-    <TouchableOpacity
-      style={[
-        styles.currencyItem,
-        { backgroundColor: 'rgba(255, 255, 255, 0.1)' },
-        selectedCurrency === item.code && { 
-          backgroundColor: 'rgba(255, 255, 255, 0.2)',
-          borderColor: 'rgba(255, 255, 255, 0.5)',
-          borderWidth: 2,
-        }
-      ]}
-      onPress={() => setSelectedCurrency(item.code)}
-    >
-      <View style={styles.currencyInfo}>
-        <View style={[styles.currencyIcon, { backgroundColor: 'rgba(255, 255, 255, 0.2)' }]}>
-          <Text style={styles.currencySymbolText}>{item.symbol}</Text>
-        </View>
-        <View style={styles.currencyDetails}>
-          <Text style={styles.currencyCode}>
-          {item.code}
-        </Text>
-          <Text style={styles.currencyName}>
-          {item.name}
-        </Text>
-        </View>
-      </View>
-      {selectedCurrency === item.code && (
-        <Check size={20} color="white" />
-      )}
-    </TouchableOpacity>
-  );
+  const addAccount = async (accountData: Omit<Account, 'id' | 'createdAt'>) => {
+    const newAccount: Account = {
+      ...accountData,
+      id: Date.now().toString(),
+      createdAt: new Date().toISOString(),
+    };
+    const updatedAccounts = [...accounts, newAccount];
+    setAccounts(updatedAccounts);
+    await setItem(StorageKeys.ACCOUNTS, updatedAccounts);
+  };
+
+  const updateAccount = async (id: string, updates: Partial<Account>) => {
+    const updatedAccounts = accounts.map(account =>
+      account.id === id ? { ...account, ...updates } : account
+    );
+    setAccounts(updatedAccounts);
+    await setItem(StorageKeys.ACCOUNTS, updatedAccounts);
+  };
+
+  const deleteAccount = async (id: string) => {
+    const updatedAccounts = accounts.filter(account => account.id !== id);
+    setAccounts(updatedAccounts);
+    await setItem(StorageKeys.ACCOUNTS, updatedAccounts);
+    
+    // Also remove transactions for this account
+    const updatedTransactions = transactions.filter(transaction => transaction.accountId !== id);
+    setTransactions(updatedTransactions);
+    await setItem(StorageKeys.TRANSACTIONS, updatedTransactions);
+  };
+
+  const addCategory = async (categoryData: Omit<Category, 'id'>) => {
+    const newCategory: Category = {
+      ...categoryData,
+      id: Date.now().toString(),
+    };
+    const updatedCategories = [...categories, newCategory];
+    setCategories(updatedCategories);
+    await setItem(StorageKeys.CATEGORIES, updatedCategories);
+  };
+
+  const updateCategory = async (id: string, updates: Partial<Category>) => {
+    const updatedCategories = categories.map(category =>
+      category.id === id ? { ...category, ...updates } : category
+    );
+    setCategories(updatedCategories);
+    await setItem(StorageKeys.CATEGORIES, updatedCategories);
+  };
+
+  const deleteCategory = async (id: string) => {
+    const updatedCategories = categories.filter(category => category.id !== id);
+    setCategories(updatedCategories);
+    await setItem(StorageKeys.CATEGORIES, updatedCategories);
+    
+    // Also remove transactions for this category
+    const updatedTransactions = transactions.filter(transaction => transaction.categoryId !== id);
+    setTransactions(updatedTransactions);
+    await setItem(StorageKeys.TRANSACTIONS, updatedTransactions);
+  };
+
+  const addTransaction = async (transactionData: Omit<Transaction, 'id' | 'createdAt'>) => {
+    const newTransaction: Transaction = {
+      ...transactionData,
+      id: Date.now().toString(),
+      createdAt: new Date().toISOString(),
+    };
+    const updatedTransactions = [...transactions, newTransaction];
+    setTransactions(updatedTransactions);
+    await setItem(StorageKeys.TRANSACTIONS, updatedTransactions);
+
+    // Update account balance
+    const account = accounts.find(acc => acc.id === transactionData.accountId);
+    if (account) {
+      const balanceChange = transactionData.type === 'income' 
+        ? transactionData.amount 
+        : -transactionData.amount;
+      await updateAccount(account.id, { 
+        balance: account.balance + balanceChange 
+      });
+    }
+  };
+
+  const updateTransaction = async (id: string, updates: Partial<Transaction>) => {
+    const oldTransaction = transactions.find(t => t.id === id);
+    if (!oldTransaction) return;
+
+    const updatedTransactions = transactions.map(transaction =>
+      transaction.id === id ? { ...transaction, ...updates } : transaction
+    );
+    setTransactions(updatedTransactions);
+    await setItem(StorageKeys.TRANSACTIONS, updatedTransactions);
+
+    // Update account balance if amount or type changed
+    if (updates.amount !== undefined || updates.type !== undefined) {
+      const account = accounts.find(acc => acc.id === oldTransaction.accountId);
+      if (account) {
+        // Reverse old transaction
+        const oldBalanceChange = oldTransaction.type === 'income' 
+          ? -oldTransaction.amount 
+          : oldTransaction.amount;
+        
+        // Apply new transaction
+        const newTransaction = { ...oldTransaction, ...updates };
+        const newBalanceChange = newTransaction.type === 'income' 
+          ? newTransaction.amount 
+          : -newTransaction.amount;
+        
+        await updateAccount(account.id, { 
+          balance: account.balance + oldBalanceChange + newBalanceChange 
+        });
+      }
+    }
+  };
+
+  const deleteTransaction = async (id: string) => {
+    const transaction = transactions.find(t => t.id === id);
+    if (!transaction) return;
+
+    const updatedTransactions = transactions.filter(t => t.id !== id);
+    setTransactions(updatedTransactions);
+    await setItem(StorageKeys.TRANSACTIONS, updatedTransactions);
+
+    // Update account balance
+    const account = accounts.find(acc => acc.id === transaction.accountId);
+    if (account) {
+      const balanceChange = transaction.type === 'income' 
+        ? -transaction.amount 
+        : transaction.amount;
+      await updateAccount(account.id, { 
+        balance: account.balance + balanceChange 
+      });
+    }
+  };
+
+  const setBudget = async (budget: Budget) => {
+    const updatedBudgets = budgets.filter(b => b.categoryId !== budget.categoryId);
+    updatedBudgets.push(budget);
+    setBudgets(updatedBudgets);
+    await setItem(StorageKeys.BUDGETS, updatedBudgets);
+  };
+
+  const deleteBudget = async (categoryId: string) => {
+    const updatedBudgets = budgets.filter(b => b.categoryId !== categoryId);
+    setBudgets(updatedBudgets);
+    await setItem(StorageKeys.BUDGETS, updatedBudgets);
+  };
+
+  const setUserProfile = async (profile: UserProfile) => {
+    setUserProfileState(profile);
+    await setItem(StorageKeys.USER_PROFILE, profile);
+  };
+
+  const clearAllData = async () => {
+    setAccounts([]);
+    setCategories([]);
+    setTransactions([]);
+    setBudgets([]);
+    setUserProfileState(null);
+    
+    await Promise.all([
+      setItem(StorageKeys.ACCOUNTS, []),
+      setItem(StorageKeys.CATEGORIES, []),
+      setItem(StorageKeys.TRANSACTIONS, []),
+      setItem(StorageKeys.BUDGETS, []),
+      setItem(StorageKeys.USER_PROFILE, null)
+    ]);
+  };
+
+  const value: DataContextType = {
+    accounts,
+    categories,
+    transactions,
+    budgets,
+    userProfile,
+    addAccount,
+    updateAccount,
+    deleteAccount,
+    addCategory,
+    updateCategory,
+    deleteCategory,
+    addTransaction,
+    updateTransaction,
+    deleteTransaction,
+    setBudget,
+    deleteBudget,
+    setUserProfile,
+    clearAllData,
+  };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <LinearGradient
-        colors={[theme.colors.primary, theme.colors.secondary]}
-          </Text>
-          <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>
-            Choose your primary currency for transactions
-          </Text>
-        </View>
-
-        <FlatList
-          data={currencies}
-          renderItem={renderCurrencyItem}
-          keyExtractor={(item) => item.code}
-          contentContainerStyle={styles.currencyList}
-          showsVerticalScrollIndicator={false}
-        />
-      </View>
-
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={[
-            styles.button,
-            { 
-              backgroundColor: theme.colors.primary,
-              opacity: isSubmitting ? 0.7 : 1
-            },
-          ]}
-          onPress={handleContinue}
-          disabled={isSubmitting}
-        >
-          <Text style={styles.buttonText}>
-            {isSubmitting ? 'Saving...' : 'Continue'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+    <DataContext.Provider value={value}>
+      {children}
+    </DataContext.Provider>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 20,
-  },
-  content: {
-    flex: 1,
-  },
-  header: {
-    marginBottom: 24,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    opacity: 0.8,
-  },
-  currencyList: {
-    paddingBottom: 20,
-  },
-  currencyItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    borderWidth: 1,
-  },
-  currencyLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  currencyCode: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginRight: 12,
-    minWidth: 60,
-  },
-  currencyName: {
-    fontSize: 16,
-  },
-  currencySymbol: {
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  footer: {
-    marginTop: 'auto',
-    marginBottom: 20,
-  },
-  button: {
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  buttonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});
-
-export default CurrencyScreen;
